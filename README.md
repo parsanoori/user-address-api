@@ -18,15 +18,12 @@ The user information contains 4 fields: `first name`, `last name`, `address`, an
 
 ## Features
 
-- **Production-ready project**
-- User information must include at least 4 fields: first name, last name, address, and ID. Additional fields are
-  optional.
-- **Preferences**:
-    - Use PostgreSQL as the database.
-    - Use channels to send data from the reading phase to the writing phase.
-    - Use an ORM like Gorm.
-    - Follow three-layer architecture such as Clean Architecture.
-    - Use the Echo library to build the API.
+- User information include at least 4 fields: first name, last name, address, and ID.
+- Uses PostgreSQL as the database.
+- Uses channels to send data from the reading phase to the writing phase.
+- Uses an ORM like Gorm.
+- Follow three-layer architecture such as Clean Architecture.
+- Uses the Echo library to build the API.
 - Uses worker pool design pattern to manage concurrent processing.
 
 ## Project FrameWorks
