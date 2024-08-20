@@ -1,7 +1,7 @@
 package usersimport
 
 import (
-	"UserAdresses/internals/database"
+	"UserAdresses/internals/controllers"
 	"UserAdresses/internals/models"
 	"encoding/json"
 	"fmt"
@@ -11,20 +11,6 @@ import (
 
 var userChan chan models.User
 var errChan chan string
-
-func addUser(data *models.User) error {
-	for _, add := range data.Addresses {
-		add.UserID = data.ID
-	}
-	tx := database.GetDB().Begin()
-	err := database.GetDB().Create(data).Error
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-	tx.Commit()
-	return nil
-}
 
 func readFile(filename string) error {
 	file, err := os.Open(filename)
@@ -91,7 +77,7 @@ func logErrors(wg *sync.WaitGroup) {
 func addUsers(wg *sync.WaitGroup) {
 	defer wg.Done()
 	for user := range userChan {
-		err := addUser(&user)
+		err := controllers.AddUser(&user)
 		if err != nil {
 			errChan <- fmt.Sprintf("Error saving user %s: %v", user.ID, err)
 		}
