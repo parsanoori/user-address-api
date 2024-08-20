@@ -67,7 +67,6 @@ func ReadFile(filename string) error {
 		}
 		userChan <- user
 	}
-	fmt.Println("end of reading the users")
 
 	// Read closing bracket
 	t, err = decoder.Token()
@@ -98,7 +97,6 @@ func LogErrors(wg *sync.WaitGroup) {
 	for err := range errChan {
 		fmt.Println(err)
 	}
-	fmt.Println("end of logging the errors")
 }
 
 func AddUsers(wg *sync.WaitGroup) {
@@ -109,7 +107,6 @@ func AddUsers(wg *sync.WaitGroup) {
 			errChan <- fmt.Sprintf("Error saving user %s: %v", user.ID, err)
 		}
 	}
-	fmt.Println("end of adding the users")
 }
 
 func main() {
@@ -131,11 +128,15 @@ func main() {
 	wgChannelMaking.Wait()
 
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go AddUsers(&wg)
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go AddUsers(&wg)
+	}
 
 	wg.Add(1)
 	go LogErrors(&wg)
 
 	wg.Wait()
+
+	fmt.Println("All users added successfully")
 }
