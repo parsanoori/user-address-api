@@ -1,31 +1,23 @@
-package main
+package usersimport
 
 import (
+	"UserAdresses/internals/database"
+	"UserAdresses/internals/models"
 	"encoding/json"
 	"fmt"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 	"os"
 	"sync"
 )
 
-var DB *gorm.DB
+var userChan chan models.User
+var errChan chan string
 
-func ConnectDB() (*gorm.DB, error) {
-	dsn := "host=localhost user=user password=password dbname=sika port=5432"
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	if err != nil {
-		return nil, err
-	}
-	return db, nil
-}
-
-func AddUser(data *User) error {
+func addUser(data *models.User) error {
 	for _, add := range data.Addresses {
 		add.UserID = data.ID
 	}
-	tx := DB.Begin()
-	err := DB.Create(data).Error
+	tx := database.GetDB().Begin()
+	err := database.GetDB().Create(data).Error
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -34,10 +26,7 @@ func AddUser(data *User) error {
 	return nil
 }
 
-var userChan chan User
-var errChan chan string
-
-func ReadFile(filename string) error {
+func readFile(filename string) error {
 	file, err := os.Open(filename)
 	if err != nil {
 		return err
@@ -60,7 +49,7 @@ func ReadFile(filename string) error {
 	}
 
 	for decoder.More() {
-		var user User
+		var user models.User
 		err = decoder.Decode(&user)
 		if err != nil {
 			errChan <- fmt.Sprintf("Error decoding JSON: %v", err)
@@ -80,63 +69,50 @@ func ReadFile(filename string) error {
 	return nil
 }
 
-func ReadUsers(filename string, wg *sync.WaitGroup) {
-	userChan = make(chan User)
+func readUsers(filename string, wg *sync.WaitGroup) {
+	userChan = make(chan models.User)
 	defer close(userChan)
 	errChan = make(chan string)
 	defer close(errChan)
 	wg.Done()
-	err := ReadFile(filename)
+	err := readFile(filename)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func LogErrors(wg *sync.WaitGroup) {
+func logErrors(wg *sync.WaitGroup) {
 	defer wg.Done()
 	for err := range errChan {
 		fmt.Println(err)
 	}
 }
 
-func AddUsers(wg *sync.WaitGroup) {
+func addUsers(wg *sync.WaitGroup) {
 	defer wg.Done()
 	for user := range userChan {
-		err := AddUser(&user)
+		err := addUser(&user)
 		if err != nil {
 			errChan <- fmt.Sprintf("Error saving user %s: %v", user.ID, err)
 		}
 	}
 }
 
-func main() {
-	var err error
-	DB, err = ConnectDB()
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-	err = DB.AutoMigrate(&User{}, &Address{})
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
+func ImportUsers(filename string) error {
+	var channelWG, wg sync.WaitGroup
 
-	var wgChannelMaking sync.WaitGroup
-	wgChannelMaking.Add(1)
-	go ReadUsers("users_data.json", &wgChannelMaking)
-	wgChannelMaking.Wait()
-
-	var wg sync.WaitGroup
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		go AddUsers(&wg)
-	}
+	channelWG.Add(1)
+	go readUsers(filename, &channelWG)
+	channelWG.Wait()
 
 	wg.Add(1)
-	go LogErrors(&wg)
+	go logErrors(&wg)
+
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go addUsers(&wg)
+	}
 
 	wg.Wait()
-
-	fmt.Println("All users added successfully")
+	return nil
 }
