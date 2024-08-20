@@ -105,7 +105,6 @@ The user information contains 4 fields: `first name`, `last name`, `address`, an
   curl -X DELETE http://localhost:8080/user/1995a603-816f-431f-a424-942baab6f6a7
   ```
 
-## Notes
+## License
 
-- The preferences mentioned are optional, and alternatives can be used.
-- Ensure the project is production-ready and follows best practices.
+This project is licensed under the MIT License.
