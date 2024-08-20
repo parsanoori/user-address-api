@@ -1,9 +1,10 @@
 package database
 
 import (
+	"UserAdresses/internals/logger"
+	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"log"
 )
 
 var db *gorm.DB
@@ -13,9 +14,9 @@ func Connect(databaseURL string) error {
 	db, err = gorm.Open(postgres.Open(databaseURL), &gorm.Config{})
 
 	if err != nil {
-		return err
+		logger.Log.Fatal("Failed to connect to the database", zap.Error(err))
 	}
-	log.Println("Database connected successfully.")
+	logger.Log.Info("Database connected successfully.")
 	return nil
 }
 

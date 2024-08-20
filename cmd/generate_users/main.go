@@ -3,10 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/brianvoe/gofakeit/v6"
 	"math/rand"
 	"os"
-
-	"github.com/brianvoe/gofakeit/v6"
 )
 
 type Address struct {

@@ -1,6 +1,10 @@
 package handlers
 
-import "github.com/labstack/echo/v4"
+import (
+	"UserAdresses/internals/logger"
+	"github.com/labstack/echo/v4"
+	"go.uber.org/zap"
+)
 
 var e *echo.Echo
 
@@ -11,7 +15,12 @@ func Setup() *echo.Echo {
 }
 
 func Start(port string) error {
-	return e.Start(":" + port)
+	err := e.Start(":" + port)
+	if err != nil {
+		logger.Log.Fatal("Failed to start the server", zap.Error(err))
+	}
+	logger.Log.Info("Server started successfully.")
+	return err
 }
 
 func SetupAndStart(port string) error {
@@ -24,4 +33,5 @@ func registerRoutes() {
 	e.GET("/user/:id", getUser)
 	e.PUT("/user", updateUser)
 	e.DELETE("/user/:id", deleteUser)
+	logger.Log.Info("Routes registered successfully.")
 }
