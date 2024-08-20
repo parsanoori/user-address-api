@@ -16,6 +16,11 @@ func createUser(e echo.Context) error {
 		})
 	}
 	err = controllers.AddUser(&user)
+	if err != nil {
+		return e.JSON(http.StatusBadRequest, map[string]string{
+			"error": "invalid request",
+		})
+	}
 	return e.JSON(http.StatusOK, map[string]string{
 		"message": "success",
 	})

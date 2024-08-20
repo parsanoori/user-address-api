@@ -91,7 +91,7 @@ func ImportUsers(filename string) error {
 	channelWG.Wait()
 
 	logWG.Add(1)
-	go logErrors(&addWG)
+	go logErrors(&logWG)
 
 	for i := 0; i < 10; i++ {
 		addWG.Add(1)

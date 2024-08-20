@@ -3,11 +3,15 @@ package controllers
 import (
 	"UserAdresses/internals/database"
 	"UserAdresses/internals/models"
+	"fmt"
 )
 
 func AddUser(data *models.User) error {
 	for _, add := range data.Addresses {
 		add.UserID = data.ID
+	}
+	if _, err := GetUser(data.ID); err == nil {
+		return fmt.Errorf("User with id %s already exists", data.ID)
 	}
 	tx := database.GetDB().Begin()
 	err := database.GetDB().Create(data).Error
