@@ -46,11 +46,21 @@ The user information contains 4 fields: `first name`, `last name`, `address`, an
     ```sh
     git clone
     ```
-2. **Setup the postgresql database and config the connection**
+2. **Setup the postgresql database and config the connection**:
+    - Create a new database in PostgreSQL.
+    - Update the needed information in the `.env` file.
 3. **Run the desired service from ./cmd package**:
     ```sh
     go run ./cmd/<service-name>
     ``` 
+
+## Use the Docker-Compose
+
+Simply run the following command and make use of the API endpoints:
+
+```sh
+docker-compose up
+```
 
 ## Example `curl` Commands
 
