@@ -59,7 +59,6 @@ func readUsers(filename string, wg *sync.WaitGroup) {
 	userChan = make(chan models.User)
 	defer close(userChan)
 	errChan = make(chan string)
-	defer close(errChan)
 	wg.Done()
 	err := readFile(filename)
 	if err != nil {
@@ -85,20 +84,21 @@ func addUsers(wg *sync.WaitGroup) {
 }
 
 func ImportUsers(filename string) error {
-	var channelWG, wg sync.WaitGroup
+	var channelWG, addWG, logWG sync.WaitGroup
 
 	channelWG.Add(1)
 	go readUsers(filename, &channelWG)
 	channelWG.Wait()
 
-	wg.Add(1)
-	go logErrors(&wg)
+	logWG.Add(1)
+	go logErrors(&addWG)
 
 	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		go addUsers(&wg)
+		addWG.Add(1)
+		go addUsers(&addWG)
 	}
-
-	wg.Wait()
+	addWG.Wait()
+	close(errChan)
+	logWG.Wait()
 	return nil
 }
