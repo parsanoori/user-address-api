@@ -34,6 +34,8 @@ func AddUser(data *User) error {
 	return nil
 }
 
+var ReadsCount int
+
 func ReadFile(filename string, userChan chan<- User, errChan chan<- string) error {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -57,14 +59,16 @@ func ReadFile(filename string, userChan chan<- User, errChan chan<- string) erro
 	}
 
 	for decoder.More() {
-		fmt.Println("here")
 		var user User
 		err = decoder.Decode(&user)
 		if err != nil {
 			errChan <- fmt.Sprintf("Error decoding JSON: %v", err)
 		}
 		userChan <- user
+		ReadsCount++
+		//fmt.Println("Read users count: ", ReadsCount)
 	}
+	fmt.Println("end of reading the users")
 
 	// Read closing bracket
 	t, err = decoder.Token()
@@ -90,16 +94,22 @@ func LogErrors(errChan <-chan string, wg *sync.WaitGroup) {
 	for err := range errChan {
 		fmt.Println(err)
 	}
+	fmt.Println("end of logging the errors")
 }
 
+var AddedUsers int
+
 func AddUsers(userChan <-chan User, errChan chan<- string, wg *sync.WaitGroup) {
+	defer wg.Done()
 	for user := range userChan {
-		fmt.Println(user.ID)
 		err := AddUser(&user)
 		if err != nil {
 			errChan <- fmt.Sprintf("Error saving user %s: %v", user.ID, err)
 		}
+		AddedUsers++
+		//fmt.Println("Added users count: ", AddedUsers)
 	}
+	fmt.Println("end of adding the users")
 }
 
 func main() {
