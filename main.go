@@ -19,7 +19,7 @@ func ConnectDB() (*gorm.DB, error) {
 	return db, nil
 }
 
-func AdrressToDB(data *Address, userID string) error {
+func AdrressToDB(data *Address) error {
 	err := DB.Create(data).Error
 	if err != nil {
 		return err
@@ -28,13 +28,13 @@ func AdrressToDB(data *Address, userID string) error {
 }
 
 func UserToDB(data *User) error {
-	addresses := data.Addresses
-	err := DB.Create(&data).Error
+	err := DB.Create(data).Error
 	if err != nil {
 		return err
 	}
-	for _, add := range addresses {
-		err := AdrressToDB(&add, data.ID)
+	for _, add := range data.Addresses {
+		add.UserID = data.ID
+		err := AdrressToDB(&add)
 		if err != nil {
 			return err
 		}
