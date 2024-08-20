@@ -20,27 +20,21 @@ func ConnectDB() (*gorm.DB, error) {
 	return db, nil
 }
 
-func UserToDB(data *User) error {
+func AddUser(data *User) error {
 	for _, add := range data.Addresses {
 		add.UserID = data.ID
 	}
+	tx := DB.Begin()
 	err := DB.Create(data).Error
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
+	tx.Commit()
 	return nil
 }
 
-func ReadUserFromJSON(data string) (*User, error) {
-	var userData User
-	err := json.Unmarshal([]byte(data), &userData)
-	if err != nil {
-		return nil, err
-	}
-	return &userData, nil
-}
-
-func ReadFile(filename string, userChan chan<- User, resultChan chan<- string) error {
+func ReadFile(filename string, userChan chan<- User, errChan chan<- string) error {
 	file, err := os.Open(filename)
 	if err != nil {
 		return err
@@ -63,13 +57,13 @@ func ReadFile(filename string, userChan chan<- User, resultChan chan<- string) e
 	}
 
 	for decoder.More() {
+		fmt.Println("here")
 		var user User
 		err = decoder.Decode(&user)
 		if err != nil {
-			resultChan <- fmt.Sprintf("Error decoding JSON: %v", err)
+			errChan <- fmt.Sprintf("Error decoding JSON: %v", err)
 		}
 		userChan <- user
-		resultChan <- fmt.Sprintf("User %s has been decoded and added to the channel", user.ID)
 	}
 
 	// Read closing bracket
@@ -84,12 +78,28 @@ func ReadFile(filename string, userChan chan<- User, resultChan chan<- string) e
 	return nil
 }
 
-func ReadUserFile() (string, error) {
-	f, err := os.ReadFile("user.json")
+func ReadUsers(filename string, userChan chan<- User, errChan chan<- string) {
+	err := ReadFile(filename, userChan, errChan)
 	if err != nil {
-		return "", err
+		panic(err)
 	}
-	return string(f), nil
+}
+
+func LogErrors(errChan <-chan string, wg *sync.WaitGroup) {
+	defer wg.Done()
+	for err := range errChan {
+		fmt.Println(err)
+	}
+}
+
+func AddUsers(userChan <-chan User, errChan chan<- string, wg *sync.WaitGroup) {
+	for user := range userChan {
+		fmt.Println(user.ID)
+		err := AddUser(&user)
+		if err != nil {
+			errChan <- fmt.Sprintf("Error saving user %s: %v", user.ID, err)
+		}
+	}
 }
 
 func main() {
@@ -106,27 +116,20 @@ func main() {
 	}
 
 	userChan := make(chan User, 100)
-	resultChan := make(chan string, 100)
+	errChan := make(chan string, 100)
+
+	defer close(userChan)
+	defer close(errChan)
 
 	var wg sync.WaitGroup
 
-	go func() {
-		err = ReadFile("users_data.json", userChan, resultChan)
-		if err != nil {
-			fmt.Println(err.Error())
-			return
-		}
-		close(userChan)
-		close(resultChan)
-	}()
+	go ReadUsers("users_data.json", userChan, errChan)
 
 	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for user := range userChan {
-			fmt.Println("User", user.ID, "is being processed")
-		}
-	}()
+	go AddUsers(userChan, errChan, &wg)
+
+	wg.Add(1)
+	go LogErrors(errChan, &wg)
 
 	wg.Wait()
 }
