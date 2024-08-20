@@ -34,9 +34,10 @@ func AddUser(data *User) error {
 	return nil
 }
 
-var ReadsCount int
+var userChan chan User
+var errChan chan string
 
-func ReadFile(filename string, userChan chan<- User, errChan chan<- string) error {
+func ReadFile(filename string) error {
 	file, err := os.Open(filename)
 	if err != nil {
 		return err
@@ -65,8 +66,6 @@ func ReadFile(filename string, userChan chan<- User, errChan chan<- string) erro
 			errChan <- fmt.Sprintf("Error decoding JSON: %v", err)
 		}
 		userChan <- user
-		ReadsCount++
-		//fmt.Println("Read users count: ", ReadsCount)
 	}
 	fmt.Println("end of reading the users")
 
@@ -82,14 +81,19 @@ func ReadFile(filename string, userChan chan<- User, errChan chan<- string) erro
 	return nil
 }
 
-func ReadUsers(filename string, userChan chan<- User, errChan chan<- string) {
-	err := ReadFile(filename, userChan, errChan)
+func ReadUsers(filename string, wg *sync.WaitGroup) {
+	userChan = make(chan User)
+	defer close(userChan)
+	errChan = make(chan string)
+	defer close(errChan)
+	wg.Done()
+	err := ReadFile(filename)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func LogErrors(errChan <-chan string, wg *sync.WaitGroup) {
+func LogErrors(wg *sync.WaitGroup) {
 	defer wg.Done()
 	for err := range errChan {
 		fmt.Println(err)
@@ -97,17 +101,13 @@ func LogErrors(errChan <-chan string, wg *sync.WaitGroup) {
 	fmt.Println("end of logging the errors")
 }
 
-var AddedUsers int
-
-func AddUsers(userChan <-chan User, errChan chan<- string, wg *sync.WaitGroup) {
+func AddUsers(wg *sync.WaitGroup) {
 	defer wg.Done()
 	for user := range userChan {
 		err := AddUser(&user)
 		if err != nil {
 			errChan <- fmt.Sprintf("Error saving user %s: %v", user.ID, err)
 		}
-		AddedUsers++
-		//fmt.Println("Added users count: ", AddedUsers)
 	}
 	fmt.Println("end of adding the users")
 }
@@ -125,21 +125,17 @@ func main() {
 		return
 	}
 
-	userChan := make(chan User, 100)
-	errChan := make(chan string, 100)
-
-	defer close(userChan)
-	defer close(errChan)
+	var wgChannelMaking sync.WaitGroup
+	wgChannelMaking.Add(1)
+	go ReadUsers("users_data.json", &wgChannelMaking)
+	wgChannelMaking.Wait()
 
 	var wg sync.WaitGroup
-
-	go ReadUsers("users_data.json", userChan, errChan)
+	wg.Add(1)
+	go AddUsers(&wg)
 
 	wg.Add(1)
-	go AddUsers(userChan, errChan, &wg)
-
-	wg.Add(1)
-	go LogErrors(errChan, &wg)
+	go LogErrors(&wg)
 
 	wg.Wait()
 }
