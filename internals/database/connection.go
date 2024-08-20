@@ -10,6 +10,7 @@ import (
 var db *gorm.DB
 
 func Connect(databaseURL string) error {
+	logger.Log.Debug("Connecting to the database with URL", zap.String("url", databaseURL))
 	var err error
 	db, err = gorm.Open(postgres.Open(databaseURL), &gorm.Config{})
 
